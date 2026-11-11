@@ -1,0 +1,319 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+  <meta name="theme-color" content="#0B1F33" />
+  <title>Budget Pace</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="apple-touch-icon.png" />
+  <link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Budget Pace" />
+  <link rel="stylesheet" href="styles.css?v=1.0" />
+</head>
+<body>
+  <header class="app-header">
+    <div>
+      <div class="title-row"><h1>Budget Pace</h1><span id="appVersion" class="version-badge">v1.0</span></div>
+      <div id="monthLabel" class="muted"></div>
+    </div>
+    <div class="header-actions month-controls">
+      <button id="prevMonthBtn" class="secondary month-nav" type="button" title="Previous month">‹</button>
+      <label class="month-picker-label">
+        <span>Budget month</span>
+        <input id="monthPicker" type="month" />
+      </label>
+      <button id="nextMonthBtn" class="secondary month-nav" type="button" title="Next month">›</button>
+      <button id="currentMonthBtn" class="secondary" type="button">Current month</button>
+      <button id="installBtn" class="secondary hidden">Install</button>
+    </div>
+  </header>
+
+  <main>
+
+    <section class="card cloud-card">
+      <div class="section-title">
+        <div>
+          <h2>OneDrive sync</h2>
+          <div class="cloud-status-line">
+            <span id="cloudSyncStatus" class="pill" data-state="local">Local only</span>
+            <span id="cloudAccountLabel" class="muted small"></span>
+          </div>
+        </div>
+        <div class="button-row">
+          <button id="cloudConfigureBtn" class="secondary" type="button">Configure</button>
+          <button id="cloudSignInBtn" type="button">Sign in to OneDrive</button>
+          <button id="cloudSyncBtn" class="secondary" type="button">Sync now</button>
+          <button id="cloudSignOutBtn" class="secondary hidden" type="button">Sign out</button>
+        </div>
+      </div>
+      <div id="cloudSyncDetail" class="muted small">Not synced yet</div>
+      <p class="muted small">
+        OneDrive is the authoritative copy. This browser keeps a local offline cache and automatically
+        syncs changes when you are signed in and online.
+      </p>
+    </section>
+
+    <section class="kpi-grid">
+      <article class="card kpi"><span>Spent</span><strong id="kpiSpent">$0</strong></article>
+      <article class="card kpi"><span>Budget</span><strong id="kpiBudget">$0</strong></article>
+      <article class="card kpi"><span>Remaining</span><strong id="kpiRemaining">$0</strong></article>
+      <article class="card kpi"><span>Forecast</span><strong id="kpiForecast">$0</strong><small id="forecastNote"></small></article>
+    </section>
+
+    <section class="card pace-card">
+      <div class="section-title">
+        <h2>Month pace</h2>
+        <span id="paceStatus" class="pill"></span>
+      </div>
+      <div class="pace-row">
+        <div>
+          <div class="label-row"><span>Time elapsed</span><strong id="timePct">0%</strong></div>
+          <progress id="timeProgress" max="100" value="0"></progress>
+        </div>
+        <div>
+          <div class="label-row"><span>Budget spent</span><strong id="spendPct">0%</strong></div>
+          <progress id="spendProgress" max="100" value="0"></progress>
+        </div>
+      </div>
+      <p id="paceExplanation" class="muted"></p>
+    </section>
+
+    <section class="two-col">
+      <article class="card">
+        <div class="section-title">
+          <h2>Income</h2>
+          <button id="addIncomeBtn" class="secondary">Add income</button>
+        </div>
+        <div class="mini-kpis">
+          <div><span>Received</span><strong id="incomeActual">$0</strong></div>
+          <div><span>Planned</span><strong id="incomePlanned">$0</strong></div>
+          <div><span>Net cash flow</span><strong id="netCashFlow">$0</strong></div>
+        </div>
+      </article>
+
+      <article class="card">
+        <div class="section-title">
+          <h2>Savings</h2>
+          <button id="closeMonthBtn" class="secondary">Close month</button>
+        </div>
+        <div class="mini-kpis">
+          <div><span>Available now</span><strong id="savingsAvailable">$0</strong></div>
+          <div><span>Transferred</span><strong id="savingsTransferred">$0</strong></div>
+          <div><span>Incidentals carryover</span><strong id="incidentalsCarryover">$0</strong></div>
+        </div>
+        <p class="muted small">Unused Incidentals roll forward. Other unused expense budget becomes Savings when the month is closed.</p>
+      </article>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>Categories</h2>
+        <button id="editBudgetBtn" class="secondary">Edit budget</button>
+      </div>
+      <div id="categoryTableWrap" class="table-wrap"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <div>
+          <h2>Monthly record</h2>
+          <div id="monthRecordStatus" class="muted small"></div>
+        </div>
+        <div class="button-row">
+          <button id="saveMonthCsvBtn" class="secondary" type="button">Save month CSV</button>
+          <label class="button secondary file-btn">
+            Load month CSV
+            <input id="loadMonthCsvFile" type="file" accept=".csv,text/csv" />
+          </label>
+        </div>
+      </div>
+      <p class="muted small">
+        Saves a snapshot of the selected month: budget, category balances, income, savings, Incidentals carryover, and transactions.
+        You can save another snapshot at any time as the month changes. Loading a snapshot replaces that month only.
+      </p>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>Transactions</h2>
+        <div class="button-row">
+          <button id="addExpenseBtn">Add expense</button>
+          <button id="addTransferBtn" class="secondary">Add transfer</button>
+          <label class="button secondary file-btn">
+            Import CSV
+            <input id="csvFile" type="file" accept=".csv,text/csv" />
+          </label>
+          <button id="exportBtn" class="secondary">Export CSV</button>
+          <button id="exportExcelBtn" class="secondary">Export Excel</button>
+        </div>
+      </div>
+
+      <div class="transaction-filters">
+        <label>Search
+          <input id="transactionSearch" type="search" placeholder="Merchant or description" />
+        </label>
+        <label>Category
+          <select id="transactionCategoryFilter"></select>
+        </label>
+        <label>Type
+          <select id="transactionTypeFilter">
+            <option value="">All types</option>
+            <option value="expense">Expense</option>
+            <option value="income">Income</option>
+            <option value="savings">Savings</option>
+            <option value="transfer">Transfer</option>
+          </select>
+        </label>
+        <div class="filter-actions">
+          <button id="clearTransactionFiltersBtn" class="secondary" type="button">Clear filters</button>
+        </div>
+      </div>
+      <div class="muted small import-note">
+          Headerless format supported: Date, Transaction Description, Debit, Credit, Balance.
+        </div>
+        <div id="transactionSummary" class="muted small"></div>
+      <div id="transactionTableWrap" class="table-wrap"></div>
+    </section>
+
+    <section class="card">
+      <div class="section-title">
+        <h2>Data safety</h2>
+        <div class="button-row">
+          <button id="backupBtn" class="secondary">Export backup</button>
+          <label class="button secondary file-btn">
+            Restore backup
+            <input id="restoreFile" type="file" accept=".json,application/json" />
+          </label>
+        </div>
+      </div>
+      <p class="muted small">A full backup preserves transactions, budgets, categories, merchant rules, carryovers and settings. CSV export preserves transaction history only.</p>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary><strong>Merchant rules</strong></summary>
+        <p class="muted small">If a transaction description contains the text below, the matching category is selected automatically.</p>
+        <div id="rulesWrap"></div>
+        <button id="addRuleBtn" class="secondary">Add rule</button>
+      </details>
+    </section>
+  </main>
+
+
+  <dialog id="cloudConfigDialog">
+    <form method="dialog" id="cloudConfigForm">
+      <h3>Configure OneDrive sync</h3>
+      <label>
+        Microsoft Application (client) ID
+        <input id="cloudClientId" type="text" required
+               placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" />
+      </label>
+      <label>
+        OneDrive account type
+        <select id="cloudAccountKind">
+          <option value="personal">Personal Microsoft / OneDrive account (recommended)</option>
+          <option value="work">Work or school OneDrive account</option>
+        </select>
+      </label>
+      <label>
+        Redirect URI to register in Microsoft Entra
+        <input id="cloudRedirectUri" type="text" readonly />
+      </label>
+      <p class="muted small">
+        Personal OneDrive uses the least-privilege Files.ReadWrite.AppFolder permission.
+        Work/school OneDrive uses Files.ReadWrite because AppFolder permission availability differs for organizational accounts.
+      </p>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">Cancel</button>
+        <button value="default">Save configuration</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="transactionDialog">
+    <form method="dialog" id="transactionForm">
+      <h3 id="transactionDialogTitle">Add expense</h3>
+      <input type="hidden" id="txType" value="expense" />
+      <label>Date<input id="txDate" type="date" required /></label>
+      <label>Description<input id="txDescription" type="text" required placeholder="Superstore" /></label>
+      <label>Amount<input id="txAmount" type="number" step="0.01" min="0" required /></label>
+      <label id="categoryLabel">Category<select id="txCategory"></select></label>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">Cancel</button>
+        <button id="saveTxBtn" value="default">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="editTransactionDialog">
+    <form method="dialog" id="editTransactionForm">
+      <h3>Edit transaction</h3>
+      <input type="hidden" id="editTxId" />
+      <label>Date<input id="editTxDate" type="date" required /></label>
+      <label>Description<input id="editTxDescription" type="text" required /></label>
+      <label>Amount<input id="editTxAmount" type="number" step="0.01" min="0" required /></label>
+      <label>Type
+        <select id="editTxType">
+          <option value="expense">Expense</option>
+          <option value="income">Income</option>
+          <option value="savings">Savings</option>
+          <option value="transfer">Transfer</option>
+        </select>
+      </label>
+      <label id="editTxCategoryLabel">Category<select id="editTxCategory"></select></label>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">Cancel</button>
+        <button id="saveEditTxBtn" value="default">Save changes</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="budgetDialog">
+    <form method="dialog" id="budgetForm">
+      <h3>Monthly budget</h3>
+      <label>Planned income<input id="plannedIncomeInput" type="number" min="0" step="0.01" /></label>
+      <div class="section-title">
+        <strong>Expense categories</strong>
+        <button id="addCategoryBtn" type="button" class="secondary">Add category</button>
+      </div>
+      <div id="budgetFields"></div>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">Cancel</button>
+        <button id="saveBudgetBtn" value="default">Save budget</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="categoryDialog">
+    <form method="dialog" id="categoryForm">
+      <h3>Add category</h3>
+      <label>Category name<input id="newCategoryName" required placeholder="e.g. Clothing" /></label>
+      <label class="checkbox-label">
+        <input id="newCategoryPace" type="checkbox" />
+        Track spending pace through the month
+      </label>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">Cancel</button>
+        <button id="saveCategoryBtn" value="default">Add category</button>
+      </div>
+    </form>
+  </dialog>
+
+  <dialog id="ruleDialog">
+    <form method="dialog" id="ruleForm">
+      <h3>Add merchant rule</h3>
+      <label>Description contains<input id="rulePattern" required placeholder="SUPERSTORE" /></label>
+      <label>Category<select id="ruleCategory"></select></label>
+      <div class="dialog-actions">
+        <button value="cancel" class="secondary">Cancel</button>
+        <button id="saveRuleBtn" value="default">Save</button>
+      </div>
+    </form>
+  </dialog>
+
+  <script src="sync.js?v=1.0"></script>
+  <script src="app.js?v=1.0"></script>
+</body>
+</html>
