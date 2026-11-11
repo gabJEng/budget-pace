@@ -147,3 +147,14 @@ th.sortable:hover{
 #cloudRedirectUri{
   background:#f3f3f3;
 }
+
+.security-scope{
+  display:inline-block;
+  font-size:.78rem;
+  font-weight:700;
+  padding:.22rem .48rem;
+  border-radius:999px;
+}
+.security-scope[data-scope="appfolder"]{background:#e7f6ea;color:#184e24}
+.security-scope[data-scope="broad"]{background:#fde8e8;color:#7a1d1d}
+.checkbox-label{display:flex;grid-template-columns:auto 1fr;align-items:flex-start;gap:.55rem}

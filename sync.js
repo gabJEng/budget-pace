@@ -154,8 +154,9 @@ class BudgetPaceCloudSync {
     this.getAppVersion=options.getAppVersion || (()=>"1.0");
     this.config=loadJson(localStorage,CONFIG_KEY,{
       clientId:"",
-      accountKind:"personal"
+      accountKind:"personal-appfolder"
     });
+    this.migrateLegacySecurityMode();
     this.meta=loadJson(localStorage,META_KEY,{
       deviceId:randomId(),
       dirty:false,
@@ -175,21 +176,53 @@ class BudgetPaceCloudSync {
     this.renderStatus();
   }
 
+  migrateLegacySecurityMode(){
+    const original=this.config.accountKind;
+    if(original==="personal"){
+      this.config.accountKind="personal-appfolder";
+      this.saveConfig();
+      this.securityModeMigratedFrom="personal";
+    }else if(original==="work"){
+      this.config.accountKind="work-appfolder";
+      this.auth=null;
+      sessionStorage.removeItem(AUTH_KEY);
+      this.saveConfig();
+      this.securityModeMigratedFrom="work";
+    }
+  }
+
+  isPersonalMode(){
+    return this.config.accountKind==="personal-appfolder";
+  }
+
+  isBroadMode(){
+    return this.config.accountKind==="work-broad";
+  }
+
+  permissionScope(){
+    return this.isBroadMode()
+      ? "https://graph.microsoft.com/Files.ReadWrite"
+      : "https://graph.microsoft.com/Files.ReadWrite.AppFolder";
+  }
+
+  permissionDisplay(){
+    if(this.config.accountKind==="personal-appfolder") return "Access: App Folder only";
+    if(this.config.accountKind==="work-appfolder") return "Access requested: App Folder only";
+    return "Access: Files.ReadWrite (broader)";
+  }
+
   get redirectUri(){
     return `${location.origin}${location.pathname}`;
   }
 
   scopes(){
-    const fileScope=this.config.accountKind==="work"
-      ? "https://graph.microsoft.com/Files.ReadWrite"
-      : "https://graph.microsoft.com/Files.ReadWrite.AppFolder";
-    return ["openid","profile","offline_access",fileScope];
+    return ["openid","profile","offline_access",this.permissionScope()];
   }
 
   authorityBase(){
-    return this.config.accountKind==="work"
-      ? "https://login.microsoftonline.com/organizations/oauth2/v2.0"
-      : "https://login.microsoftonline.com/consumers/oauth2/v2.0";
+    return this.isPersonalMode()
+      ? "https://login.microsoftonline.com/consumers/oauth2/v2.0"
+      : "https://login.microsoftonline.com/organizations/oauth2/v2.0";
   }
 
   saveMeta(){
@@ -225,19 +258,30 @@ class BudgetPaceCloudSync {
 
     $("cloudConfigureBtn")?.addEventListener("click",()=>{
       $("cloudClientId").value=this.config.clientId||"";
-      $("cloudAccountKind").value=this.config.accountKind||"personal";
+      $("cloudAccountKind").value=this.config.accountKind||"personal-appfolder";
+      this.renderPermissionChoice();
       $("cloudRedirectUri").value=this.redirectUri;
       $("cloudConfigDialog").showModal();
     });
 
+    $("cloudAccountKind")?.addEventListener("change",()=>this.renderPermissionChoice());
+
     $("cloudConfigForm")?.addEventListener("submit",e=>{
       e.preventDefault();
       const previousClient=this.config.clientId;
+      const previousMode=this.config.accountKind;
+      const nextMode=$("cloudAccountKind").value;
+
+      if(nextMode==="work-broad" && !$("broadPermissionAcknowledge")?.checked){
+        alert("Broad work/school mode requires explicit acknowledgement because Files.ReadWrite can access files outside the Budget Pace app folder.");
+        return;
+      }
+
       this.config.clientId=$("cloudClientId").value.trim();
-      this.config.accountKind=$("cloudAccountKind").value;
+      this.config.accountKind=nextMode;
       this.saveConfig();
 
-      if(previousClient && previousClient!==this.config.clientId){
+      if((previousClient && previousClient!==this.config.clientId) || previousMode!==nextMode){
         this.auth=null;
         this.saveAuth();
         this.meta.lastCloudRevision=0;
@@ -265,6 +309,15 @@ class BudgetPaceCloudSync {
     window.addEventListener("offline",()=>this.setStatus("offline","Using local cache."));
   }
 
+  renderPermissionChoice(){
+    const $=id=>document.getElementById(id);
+    const mode=$("cloudAccountKind")?.value || this.config.accountKind;
+    const wrap=$("broadPermissionAcknowledgeWrap");
+    const ack=$("broadPermissionAcknowledge");
+    if(wrap) wrap.classList.toggle("hidden",mode!=="work-broad");
+    if(ack && mode!=="work-broad") ack.checked=false;
+  }
+
   async initialize(){
     try{
       await this.handleAuthorizationCallback();
@@ -285,7 +338,11 @@ class BudgetPaceCloudSync {
     }
 
     if(!this.isSignedIn()){
-      this.setStatus("ready","Configured; sign in to enable OneDrive sync.");
+      if(this.securityModeMigratedFrom==="work"){
+        this.setStatus("ready","Security upgrade applied: sign in again to request App Folder-only access.");
+      }else{
+        this.setStatus("ready","Configured; sign in to enable OneDrive sync.");
+      }
       return;
     }
 
@@ -316,6 +373,7 @@ class BudgetPaceCloudSync {
     const statusEl=document.getElementById("cloudSyncStatus");
     const detailEl=document.getElementById("cloudSyncDetail");
     const accountEl=document.getElementById("cloudAccountLabel");
+    const permissionEl=document.getElementById("cloudPermissionLabel");
     const signIn=document.getElementById("cloudSignInBtn");
     const signOut=document.getElementById("cloudSignOutBtn");
     const syncBtn=document.getElementById("cloudSyncBtn");
@@ -350,6 +408,10 @@ class BudgetPaceCloudSync {
       accountEl.textContent=this.accountLabel()
         ? `Microsoft account: ${this.accountLabel()}`
         : "";
+    }
+    if(permissionEl){
+      permissionEl.textContent=this.permissionDisplay();
+      permissionEl.dataset.scope=this.isBroadMode() ? "broad" : "appfolder";
     }
     if(signIn) signIn.classList.toggle("hidden",this.isSignedIn());
     if(signOut) signOut.classList.toggle("hidden",!this.isSignedIn());
@@ -511,6 +573,13 @@ class BudgetPaceCloudSync {
     const response=await this.graph(`${GRAPH_ROOT}/me/drive/special/approot`);
     if(!response.ok){
       const text=await response.text();
+      if(this.config.accountKind==="work-appfolder" && (response.status===401 || response.status===403)){
+        throw new Error(
+          "Work/school App Folder-only access was rejected by Microsoft for this account/tenant. " +
+          "Microsoft documentation is currently inconsistent on delegated work-account support. " +
+          "Keep your local data, then either use a personal OneDrive App Folder or explicitly choose the broader work/school Files.ReadWrite fallback."
+        );
+      }
       throw new Error(`OneDrive App Folder access failed (${response.status}). ${text.slice(0,180)}`);
     }
     return response.json();

@@ -343,3 +343,13 @@ See `ONEDRIVE_SETUP.md` before first sign-in.
 - Multi-device transaction merge uses the same practical transaction fingerprint
   concept as CSV duplicate detection, reducing duplicate transactions when the same
   bank transaction was independently imported on two devices.
+
+
+# Version 1.0.1 — Security hardening
+
+- App Folder-only is now the preferred mode for personal and work/school accounts.
+- Existing v1.0 work mode is migrated to App Folder-only and requires a fresh sign-in.
+- A broader `Files.ReadWrite` work fallback remains available only with explicit acknowledgement.
+- The OneDrive panel displays the current permission scope.
+- Added Content Security Policy, no-referrer policy, and disabled camera/microphone/geolocation.
+- See `SECURITY.md`.
