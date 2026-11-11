@@ -1864,7 +1864,7 @@ if("serviceWorker" in navigator &&
 }
 
 (function init(){
-  if($("appVersion")) $("appVersion").textContent="v1.0";
+  if($("appVersion")) $("appVersion").textContent="v1.0.2";
   const startupMigrationChanged=migrateCreditCardPayments();
   const now=todayISO().slice(0,7);
   $("monthPicker").value=now;
@@ -1884,7 +1884,7 @@ if("serviceWorker" in navigator &&
         refreshTransactionFilterOptions();
         render();
       },
-      getAppVersion:()=>"1.0"
+      getAppVersion:()=>"1.0.2"
     });
     if(startupMigrationChanged) cloudSync.notifyLocalChange();
     cloudSync.initialize();

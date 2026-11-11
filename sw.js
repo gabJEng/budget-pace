@@ -1,10 +1,10 @@
-const CACHE="budget-pace-v1-0";
+const CACHE="budget-pace-v1-0-2";
 const ASSETS=[
   "./",
   "index.html",
-  "styles.css?v=1.0",
-  "sync.js?v=1.0",
-  "app.js?v=1.0",
+  "styles.css?v=1.0.2",
+  "sync.js?v=1.0.2",
+  "app.js?v=1.0.2",
   "manifest.json",
   "icon-192.png",
   "icon-512.png",

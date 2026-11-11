@@ -353,3 +353,13 @@ See `ONEDRIVE_SETUP.md` before first sign-in.
 - The OneDrive panel displays the current permission scope.
 - Added Content Security Policy, no-referrer policy, and disabled camera/microphone/geolocation.
 - See `SECURITY.md`.
+
+
+## v1.0.2 cache/display fix
+
+This release fixes a version mismatch in v1.0.1 where:
+- index.html displayed v1.0.1,
+- app.js still overwrote the badge with v1.0,
+- sw.js still used the v1.0 cache namespace and v1.0 asset URLs.
+
+v1.0.2 aligns the HTML, runtime version label, asset query strings, and service-worker cache.
